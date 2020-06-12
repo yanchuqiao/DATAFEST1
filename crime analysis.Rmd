@@ -1,0 +1,90 @@
+---
+title: "Crime analysis"
+author: "Chuqiao Yan"
+date: "12/06/2020"
+output: pdf_document
+---
+
+research question: 
+1. To predict crime counts in the future?
+2. Does shut down policy of COVID-19 influnce crime counts in total? 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(reprex)
+library(ggplot2)
+crime_counts <- read.csv('/Users/yanchu/Desktop/crime_counts.csv') %>% mutate (state = ifelse(city_name == "Austin, TX","Texas",
+                                         ifelse(city_name == "Boston, MA","Massachusetts",
+                                         ifelse(city_name == "Chicago, IL","Illinois",
+                                         ifelse(city_name == "Dallas, TX","Texas",
+                                         ifelse(city_name == "Los Angeles, CA","California",
+                                         ifelse(city_name == "Louisville, KY","Kentucky",
+                                         ifelse(city_name == "Memphis, TN","Tennessee",
+                                         ifelse(city_name == "Minneapolis, MN", "Minnesota",
+                                         ifelse(city_name == "Montgomery County, MD", "Maryland",
+                                         ifelse(city_name == "Nashville, TN", "Tennessee",
+                                         ifelse(city_name == "Philadelphia, PA", "Pennsylvania",
+                                         ifelse(city_name == "Phoenix, AZ", "Arizona",
+                                         ifelse(city_name == "San Francisco, CA", "California",
+                                         ifelse(city_name == "Tucson, AZ", "Arizona",
+                                         ifelse(city_name == "Washington, DC", "Washington, DC","")))))))))))))))) %>% filter(week_beginning >= as.Date("2018-01-01"))
+crime_counts$week_beginning <- lubridate::ymd(crime_counts$week_beginning, truncated = 1)
+
+#glimpse(crime_counts)
+#summary(crime_counts)
+#boxplot(crime_counts$actual_crimes)
+#boxplot(actual_crimes~holiday_in_week, data = crime_counts)
+
+ggplot(crime_counts, aes(x = state, y = actual_crimes, fill = holiday_in_week)) +
+        geom_boxplot(alpha=0.7) +
+        scale_y_continuous(name = "Actual Crimes Counts",
+                           breaks = seq(0, 750, 100),
+                           limits=c(0, 750)) +
+        scale_x_discrete(name = "State") +
+        ggtitle("Boxplot of Crime Counts in 11 States") +
+        theme_bw() +
+        theme(plot.title = element_text(size = 12, family = "Tahoma", face = "bold"),
+              text = element_text(size = 12, family = "Tahoma"),
+              axis.title = element_text(face="bold"),
+              axis.text.x=element_text(size = 11)) +
+        scale_fill_brewer(palette="BuPu")+ theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggplot(crime_counts, aes(x = week_beginning, group = state)) +
+    theme_minimal() +
+    geom_point(aes(y=actual_crimes,fill = state),pch = 21,alpha = .5,colour = "black") +
+    geom_line(aes(y=actual_crimes,fill = state)) +
+    labs(title = "case counts by state",
+         x = "Weeks",
+         y = "Counts Crimes") 
+
+```
+
+```{r}
+### Combining policy date and crime counts,  creating new dataset "crime_and policy"
+policy <- read.csv('/Users/yanchu/Desktop/COVID-19 US state policy database 6_09_2020.csv')
+policy <- policy[-c(2,3,4, 52:1001), ]
+policy <- policy[ -c(2,6,10,11,17,18,20,22:34,36:47,52:68) ]
+names(policy) <- c("state", "state_emerg","closchool","clodaycr","stayhome","end_sthm","clbsns","facemask","fmemp","alcopen","gunopen","clrest","clgym","clmovie","tlhlmed","uemploy_insur","uemply_insur_plus","uemploy_insur_week","uemploy_insur_week_ext")
+policy <- policy[-c(1),] 
+glimpse(policy)
+
+crime_and_policy <- crime_counts %>%
+  inner_join(policy,by = c("state" = "state")) %>%
+  select(state, category, week_beginning, holiday_in_week, actual_crimes,state_emerg,closchool,stayhome,facemask,alcopen,gunopen,clrest,clgym,clmovie,uemply_insur_plus,uemploy_insur_week_ext)
+
+crime_and_policy <- as.data.frame(crime_and_policy)
+crime_and_policy[is.na(crime_and_policy)]<-0
+
+
+crime_and_policy$week_beginning <- lubridate::ymd(crime_and_policy$week_beginning, truncated = 1)
+crime_and_policy$state_emerg <- lubridate::ymd(crime_and_policy$state_emerg, truncated = 1)
+crime_and_policy$closchool <- lubridate::ymd(crime_and_policy$closchool,truncated = 1)
+crime_and_policy$clrest <- lubridate::ymd(crime_and_policy$clrest,truncated = 1)
+crime_and_policy$clgym <- lubridate::ymd(crime_and_policy$clgym,truncated = 1)
+crime_and_policy$clmovie<- lubridate::ymd(crime_and_policy$clmovie,truncated = 1)
+
+#glimpse(crime_and_policy)
+```
+
